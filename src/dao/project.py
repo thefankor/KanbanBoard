@@ -1,0 +1,10 @@
+from src.dao.base import BaseDAO
+from src.models import Project, BaseWithTimestamps, ProjectUser
+
+
+class ProjectDAO(BaseDAO):
+    model = Project
+
+
+class ProjectUserDAO(BaseWithTimestamps):
+    model = ProjectUser
