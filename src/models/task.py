@@ -12,8 +12,9 @@ class Task(BaseWithTimestamps):
     __tablename__ = "tasks"
 
     id: Mapped[UUID] = mapped_column(primary_key=True)
-    column_id: Mapped[UUID] = mapped_column(ForeignKey("columns.id"), nullable=False)
-    title: Mapped[str] = mapped_column(String, nullable=False)
+    column_id: Mapped[UUID] = mapped_column(ForeignKey("columns.id"))
+    title: Mapped[str] = mapped_column(String)
     description: Mapped[Optional[str]] = mapped_column(Text)
     assignee_id: Mapped[Optional[UUID]] = mapped_column(ForeignKey("users.id"))
+    producer_id: Mapped[Optional[UUID]] = mapped_column(ForeignKey("users.id"))
     deadline: Mapped[Optional[datetime.date]] = mapped_column(Date)

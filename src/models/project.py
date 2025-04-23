@@ -12,7 +12,7 @@ class Project(BaseWithTimestamps):
     __tablename__ = "projects"
 
     id: Mapped[UUID] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String, nullable=False)
+    name: Mapped[str] = mapped_column(String)
     description: Mapped[Optional[str]] = mapped_column(Text)
 
 
@@ -20,16 +20,16 @@ class ProjectUser(BaseWithTimestamps):
     __tablename__ = "project_users"
 
     id: Mapped[UUID] = mapped_column(primary_key=True)
-    project_id: Mapped[UUID] = mapped_column(ForeignKey("projects.id"), nullable=False)
-    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
-    role: Mapped[ProjectUserRole] = mapped_column(Enum(ProjectUserRole), nullable=False)
+    project_id: Mapped[UUID] = mapped_column(ForeignKey("projects.id"))
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
+    role: Mapped[ProjectUserRole] = mapped_column(Enum(ProjectUserRole))
 
 
 class ProjectLog(BaseWithTimestamps):
     __tablename__ = "project_logs"
 
     id: Mapped[UUID] = mapped_column(primary_key=True)
-    task_id: Mapped[UUID] = mapped_column(ForeignKey("tasks.id"), nullable=False)
+    task_id: Mapped[UUID] = mapped_column(ForeignKey("tasks.id"))
     user_id: Mapped[Optional[UUID]] = mapped_column(ForeignKey("users.id"))
-    type: Mapped[str] = mapped_column(String, nullable=False)
+    type: Mapped[str] = mapped_column(String)
     info: Mapped[Optional[str]] = mapped_column(Text)
