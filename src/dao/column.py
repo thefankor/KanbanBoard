@@ -1,5 +1,6 @@
-from src.models import BaseWithTimestamps, Column
+from src.dao.base import BaseDAO
+from src.models import Column
 
 
-class ColumnDAO(BaseWithTimestamps):
+class ColumnDAO(BaseDAO):
     model = Column

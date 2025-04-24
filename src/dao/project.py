@@ -6,5 +6,5 @@ class ProjectDAO(BaseDAO):
     model = Project
 
 
-class ProjectUserDAO(BaseWithTimestamps):
+class ProjectUserDAO(BaseDAO):
     model = ProjectUser
