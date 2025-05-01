@@ -21,3 +21,7 @@ class CreateUserResponse(BaseModel):
     username: str
     created_at: datetime
     updated_at: datetime
+
+
+class RefreshTokenRequest(BaseModel):
+    refresh_token: str

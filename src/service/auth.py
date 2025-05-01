@@ -8,7 +8,7 @@ from src.schemas import AuthResponse
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
 
 class AuthService:
     @staticmethod
@@ -30,7 +30,7 @@ class AuthService:
         access_token = AuthService.create_token(
             data=data,
             expires_delta=access_token_expires,
-            secret_key=settings.SECRET_KEY
+            secret_key=settings.ACCESS_SECRET_KEY
         )
 
         refresh_token = AuthService.create_token(

@@ -1,3 +1,4 @@
+import uuid
 from abc import ABC
 
 from fastapi import Depends
@@ -65,7 +66,7 @@ class BaseDAO(ABC):
         :param data: Данные новой записи как именованные аргументы.
         :return: Добавленный экземпляр модели.
         """
-        query = insert(self.model).values(**data).returning(self.model)
+        query = insert(self.model).values(id=uuid.uuid4(), **data).returning(self.model)
         result = await self.session.execute(query)
         await self.session.commit()
         return result.scalar_one_or_none()
