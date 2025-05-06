@@ -2,8 +2,9 @@ from typing import Optional
 from uuid import UUID
 
 from sqlalchemy import String, Text, ForeignKey, Enum
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from src.models.user import User
 from src.models.base import BaseWithTimestamps
 from src.models.enums import ProjectUserRole
 
@@ -23,6 +24,8 @@ class ProjectUser(BaseWithTimestamps):
     project_id: Mapped[UUID] = mapped_column(ForeignKey("projects.id"))
     user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
     role: Mapped[ProjectUserRole] = mapped_column(Enum(ProjectUserRole))
+
+    user: Mapped[User] = relationship("User", backref="project_links")
 
 
 class ProjectLog(BaseWithTimestamps):

@@ -26,7 +26,7 @@ class BaseDAO(ABC):
         """
         self.session = session
 
-    async def find_by_id(self, model_id: int):
+    async def find_by_id(self, model_id: uuid.UUID):
         """
         Найти запись по первичному ключу `id`.
 
