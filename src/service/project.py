@@ -3,12 +3,13 @@ from uuid import UUID
 from fastapi import Depends, HTTPException, status
 from pydantic import EmailStr
 
+from src.dao import ColumnDAO
 from src.dao.project import ProjectDAO, ProjectUserDAO
 from src.dao.user import UserDAO
 
 from src.models import User
 from src.models.enums import InviteProjectUserRole
-from src.models.project import ProjectUserRole
+from src.models.project import ProjectUserRole, Project
 
 from src.schemas.project import ProjectCreate, ProjectResponse, ProjectMemberResponse, \
     ProjectResponseShort
@@ -24,10 +25,12 @@ class ProjectService:
             self,
              project_dao: ProjectDAO = Depends(),
              project_user_dao: ProjectUserDAO = Depends(),
+             column_dao: ColumnDAO = Depends(),
              user_dao: UserDAO = Depends()
              ):
         self.project_dao = project_dao
         self.project_user_dao = project_user_dao
+        self.column_dao = column_dao
         self.user_dao = user_dao
 
     async def create_project(self, project: ProjectCreate, owner: User) -> ProjectResponse:
@@ -43,6 +46,8 @@ class ProjectService:
         """
 
         db_project = await self.project_dao.create_project(project)
+
+        await self.create_default_columns(db_project)
 
         db_member = await self.project_user_dao.add_project_member(
                 project_id=db_project.id,
@@ -66,6 +71,32 @@ class ProjectService:
                 )
             ]
         )
+
+    async def create_default_columns(self, project: Project):
+        """
+        Создает стандартные колонки для указанного проекта.
+
+        По умолчанию создаются следующие колонки:
+        - "Backlog"
+        - "Doing"
+        - "Review"
+        - "Done"
+
+        Каждая колонка создается с позицией, соответствующей порядковому номеру в списке.
+
+        Args:
+            project (Project): Экземпляр проекта, для которого создаются колонки.
+
+        Returns:
+            None
+        """
+        default_columns = ["Backlog", "Doing", "Review", "Done"]
+        for idx, column_name in enumerate(default_columns):
+            await self.column_dao.add(
+                project_id=project.id,
+                name=column_name,
+                position=idx
+            )
 
     async def invite_member(self, project_id: UUID, email: EmailStr) -> ProjectMemberResponse:
         """
