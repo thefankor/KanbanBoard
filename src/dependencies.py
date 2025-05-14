@@ -3,9 +3,10 @@ from fastapi import Depends, HTTPException, status
 from uuid import UUID
 
 from src.config import settings
-from src.dao import UserDAO, ProjectUserDAO, TaskDAO, ColumnDAO
+from src.dao import UserDAO, ProjectUserDAO, TaskDAO
 from src.models import User, ProjectUserRole
 from src.service.auth import oauth2_scheme
+from src.dao.column import ColumnDAO
 
 
 
@@ -212,9 +213,40 @@ async def can_change_task_column(
     if not column:
         raise HTTPException(status_code=404, detail="Column not found")
     project_id = column.project_id
-    # Проверяем: либо админ/владелец, либо исполнитель
+    
     project_user = await project_user_dao.check_member(project_id, current_user.id)
     is_admin_or_owner = project_user and project_user.role in [ProjectUserRole.admin, ProjectUserRole.owner]
     is_assignee = task.assignee_id == current_user.id
     if not (is_admin_or_owner or is_assignee):
         raise HTTPException(status_code=403, detail="Not enough permissions")
+
+async def get_project_admin_by_column(
+    column_id: UUID,
+    user: User = Depends(get_current_user),
+    column_dao: ColumnDAO = Depends(ColumnDAO),
+    project_user_dao: ProjectUserDAO = Depends(ProjectUserDAO)
+):
+    """
+    Проверяет, что пользователь является админом или владельцем проекта, которому принадлежит колонка.
+
+    Args:
+        column_id (UUID): Идентификатор колонки
+        user (User): Текущий пользователь
+        column_dao (ColumnDAO): DAO для колонок
+        project_user_dao (ProjectUserDAO): DAO для участников проекта
+
+    Returns:
+        User: Пользователь, если у него есть права
+
+    Raises:
+        HTTPException: 404 — если колонка не найдена
+        HTTPException: 403 — если недостаточно прав
+    """
+    column = await column_dao.find_by_id(column_id)
+    if not column:
+        raise HTTPException(status_code=404, detail="Column not found")
+    project_id = column.project_id
+    project_member = await project_user_dao.check_member(project_id, user.id)
+    if not project_member or project_member.role not in [ProjectUserRole.admin, ProjectUserRole.owner]:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+    return user
