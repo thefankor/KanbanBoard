@@ -3,7 +3,7 @@ from typing import Optional
 from uuid import UUID
 
 from sqlalchemy import String, ForeignKey, Text, Date
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from src.models.base import BaseWithTimestamps
 
@@ -18,3 +18,5 @@ class Task(BaseWithTimestamps):
     assignee_id: Mapped[Optional[UUID]] = mapped_column(ForeignKey("users.id"))
     producer_id: Mapped[Optional[UUID]] = mapped_column(ForeignKey("users.id"))
     deadline: Mapped[Optional[datetime.date]] = mapped_column(Date)
+    
+    column: Mapped["Column"] = relationship("Column", back_populates="tasks")

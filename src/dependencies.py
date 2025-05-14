@@ -3,7 +3,7 @@ from fastapi import Depends, HTTPException, status
 from uuid import UUID
 
 from src.config import settings
-from src.dao import UserDAO, ProjectUserDAO
+from src.dao import UserDAO, ProjectUserDAO, TaskDAO, ColumnDAO
 from src.models import User, ProjectUserRole
 from src.service.auth import oauth2_scheme
 
@@ -177,3 +177,44 @@ async def get_project_owner_user(
         )
 
     return user
+
+async def get_project_id_by_task_id_and_check_admin(
+    task_id: UUID,
+    current_user: User = Depends(get_current_user),
+    task_dao: TaskDAO = Depends(TaskDAO),
+    column_dao: ColumnDAO = Depends(ColumnDAO),
+    project_user_dao: ProjectUserDAO = Depends(ProjectUserDAO),
+) -> UUID:
+    task = await task_dao.find_by_id(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    column = await column_dao.find_by_id(task.column_id)
+    if not column:
+        raise HTTPException(status_code=404, detail="Column not found")
+    project_id = column.project_id
+    # Проверяем, что пользователь — админ или владелец проекта
+    project_user = await project_user_dao.check_member(project_id, current_user.id)
+    if not project_user or project_user.role not in [ProjectUserRole.admin, ProjectUserRole.owner]:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+    return project_id
+
+async def can_change_task_column(
+    task_id: UUID,
+    current_user: User = Depends(get_current_user),
+    task_dao: TaskDAO = Depends(TaskDAO),
+    column_dao: ColumnDAO = Depends(ColumnDAO),
+    project_user_dao: ProjectUserDAO = Depends(ProjectUserDAO),
+) -> None:
+    task = await task_dao.find_by_id(task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Task not found")
+    column = await column_dao.find_by_id(task.column_id)
+    if not column:
+        raise HTTPException(status_code=404, detail="Column not found")
+    project_id = column.project_id
+    # Проверяем: либо админ/владелец, либо исполнитель
+    project_user = await project_user_dao.check_member(project_id, current_user.id)
+    is_admin_or_owner = project_user and project_user.role in [ProjectUserRole.admin, ProjectUserRole.owner]
+    is_assignee = task.assignee_id == current_user.id
+    if not (is_admin_or_owner or is_assignee):
+        raise HTTPException(status_code=403, detail="Not enough permissions")

@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
 from src.dao.base import BaseDAO
-from src.models import Project, ProjectUser, ProjectUserRole
+from src.models import Project, ProjectUser, ProjectUserRole, Column, Task
 from src.schemas.project import ProjectCreate, ProjectMemberCreate, ProjectMemberResponse
 
 
@@ -26,6 +26,26 @@ class ProjectDAO(BaseDAO):
         )
         result = await self.session.execute(stmt)
         return result.scalars().all()
+
+    async def get_project_columns_with_tasks(self, project_id: UUID) -> list[Column]:
+        """
+        Получает все колонки проекта вместе с их задачами.
+        
+        Args:
+            project_id (UUID): Идентификатор проекта
+            
+        Returns:
+            list[Column]: Список колонок с их задачами
+        """
+        stmt = (
+            select(Column)
+            .where(Column.project_id == project_id)
+            .options(joinedload(Column.tasks))
+            .order_by(Column.position)
+        )
+        result = await self.session.execute(stmt)
+        return result.unique().scalars().all()
+
 
 class ProjectUserDAO(BaseDAO):
     model = ProjectUser
