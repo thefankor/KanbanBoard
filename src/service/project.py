@@ -3,15 +3,17 @@ from uuid import UUID
 from fastapi import Depends, HTTPException, status
 from pydantic import EmailStr
 
+from src.dao import ColumnDAO
 from src.dao.project import ProjectDAO, ProjectUserDAO
 from src.dao.user import UserDAO
 
 from src.models import User
 from src.models.enums import InviteProjectUserRole
-from src.models.project import ProjectUserRole
+from src.models.project import ProjectUserRole, Project
 
 from src.schemas.project import ProjectCreate, ProjectResponse, ProjectMemberResponse, \
     ProjectResponseShort
+from src.service.log import ProjectLogService
 
 
 class ProjectService:
@@ -24,11 +26,15 @@ class ProjectService:
             self,
              project_dao: ProjectDAO = Depends(),
              project_user_dao: ProjectUserDAO = Depends(),
-             user_dao: UserDAO = Depends()
+             column_dao: ColumnDAO = Depends(),
+             user_dao: UserDAO = Depends(),
+             log_service: ProjectLogService = Depends()
              ):
         self.project_dao = project_dao
         self.project_user_dao = project_user_dao
+        self.column_dao = column_dao
         self.user_dao = user_dao
+        self.log_service = log_service
 
     async def create_project(self, project: ProjectCreate, owner: User) -> ProjectResponse:
         """
@@ -44,11 +50,21 @@ class ProjectService:
 
         db_project = await self.project_dao.create_project(project)
 
+        await self.create_default_columns(db_project)
+
         db_member = await self.project_user_dao.add_project_member(
                 project_id=db_project.id,
                 user_id=owner.id,
                 role=ProjectUserRole.owner
         )
+
+        await self.log_service.add_log(
+            project_id=db_project.id,
+            user_id=owner.id,
+            type="create",
+            info=f"project"
+        )
+
         return ProjectResponse(
             id=db_project.id,
             name=db_project.name,
@@ -67,7 +83,33 @@ class ProjectService:
             ]
         )
 
-    async def invite_member(self, project_id: UUID, email: EmailStr) -> ProjectMemberResponse:
+    async def create_default_columns(self, project: Project):
+        """
+        Создает стандартные колонки для указанного проекта.
+
+        По умолчанию создаются следующие колонки:
+        - "Backlog"
+        - "Doing"
+        - "Review"
+        - "Done"
+
+        Каждая колонка создается с позицией, соответствующей порядковому номеру в списке.
+
+        Args:
+            project (Project): Экземпляр проекта, для которого создаются колонки.
+
+        Returns:
+            None
+        """
+        default_columns = ["Backlog", "Doing", "Review", "Done"]
+        for idx, column_name in enumerate(default_columns):
+            await self.column_dao.add(
+                project_id=project.id,
+                name=column_name,
+                position=idx
+            )
+
+    async def invite_member(self, project_id: UUID, email: EmailStr, current_user_id: UUID) -> ProjectMemberResponse:
         """
         Приглашает пользователя в проект по email.
 
@@ -100,6 +142,13 @@ class ProjectService:
         project_user = await self.project_user_dao.add_project_member(
             project_id=project_id,
             user_id=user.id,
+        )
+
+        await self.log_service.add_log(
+            project_id=project.id,
+            user_id=current_user_id,
+            type="member invite",
+            info=f"{user.id}"
         )
 
         return ProjectMemberResponse(
@@ -183,6 +232,14 @@ class ProjectService:
             )
         await self.project_user_dao.update_role(project_id, user_id, new_role.name)
         user = await self.user_dao.find_by_id(user_id)
+
+        await self.log_service.add_log(
+            project_id=project_id,
+            user_id=current_user_id,
+            type="member change role",
+            info=f"{user.id} to {new_role.name}"
+        )
+
         return ProjectMemberResponse(
             id=user.id,
             username=user.username,
@@ -233,12 +290,28 @@ class ProjectService:
 
         if current_project_user.role == ProjectUserRole.owner:
             await self.project_user_dao.remove_project_member(project_id, user_id)
+
+            await self.log_service.add_log(
+                project_id=project_id,
+                user_id=current_user_id,
+                type="member remove",
+                info=f"{user_id}"
+            )
+
             return True
 
         if current_project_user.role == ProjectUserRole.admin:
             if project_user.role in [ProjectUserRole.member]:
                 await self.project_user_dao.remove_project_member(project_id, user_id)
+
+                await self.log_service.add_log(
+                    project_id=project_id,
+                    user_id=current_user_id,
+                    type="member remove",
+                    info=f"{user_id}"
+                )
                 return True
+
             else:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,

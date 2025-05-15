@@ -32,7 +32,7 @@ class ProjectResponse(ProjectBase):
     id: UUID
     created_at: datetime
     updated_at: datetime
-    members: List[ProjectMemberResponse] = []
+    members: List[ProjectMemberResponse]
 
     class Config:
         from_attributes = True 

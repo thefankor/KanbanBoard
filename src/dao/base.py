@@ -1,5 +1,7 @@
 import uuid
+from uuid import UUID
 from abc import ABC
+from typing import Union
 
 from fastapi import Depends
 from sqlalchemy import select, insert, delete, update
@@ -26,7 +28,7 @@ class BaseDAO(ABC):
         """
         self.session = session
 
-    async def find_by_id(self, model_id: uuid.UUID):
+    async def find_by_id(self, model_id: Union[int, UUID]):
         """
         Найти запись по первичному ключу `id`.
 
@@ -71,7 +73,7 @@ class BaseDAO(ABC):
         await self.session.commit()
         return result.scalar_one_or_none()
 
-    async def delete(self, model_id: int):
+    async def delete(self, model_id: Union[int, UUID]):
         """
         Удалить запись по ID, если она существует.
 
@@ -88,7 +90,7 @@ class BaseDAO(ABC):
         await self.session.commit()
         return {"message": "Record deleted successfully"}
 
-    async def update(self, model_id: int, **update_data):
+    async def update(self, model_id: Union[int, UUID], **update_data):
         """
         Обновить существующую запись по ID.
 
@@ -110,4 +112,4 @@ class BaseDAO(ABC):
         )
         result = await self.session.execute(stmt)
         await self.session.commit()
-        return result.scalars().all()
+        return result.scalar_one_or_none()
