@@ -52,7 +52,7 @@ async def invite_member(
 ):
     """Пригласить участника в проект."""
     try:
-        return await project_service.invite_member(project_id, member.email)
+        return await project_service.invite_member(project_id, member.email, current_user.id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

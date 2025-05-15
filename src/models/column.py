@@ -10,7 +10,7 @@ class Column(BaseWithTimestamps):
     __tablename__ = "columns"
 
     id: Mapped[UUID] = mapped_column(primary_key=True)
-    project_id: Mapped[UUID] = mapped_column(ForeignKey("projects.id"))
+    project_id: Mapped[UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"))
     name: Mapped[str] = mapped_column(String)
     position: Mapped[int]
     

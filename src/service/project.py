@@ -13,6 +13,7 @@ from src.models.project import ProjectUserRole, Project
 
 from src.schemas.project import ProjectCreate, ProjectResponse, ProjectMemberResponse, \
     ProjectResponseShort
+from src.service.log import ProjectLogService
 
 
 class ProjectService:
@@ -26,12 +27,14 @@ class ProjectService:
              project_dao: ProjectDAO = Depends(),
              project_user_dao: ProjectUserDAO = Depends(),
              column_dao: ColumnDAO = Depends(),
-             user_dao: UserDAO = Depends()
+             user_dao: UserDAO = Depends(),
+             log_service: ProjectLogService = Depends()
              ):
         self.project_dao = project_dao
         self.project_user_dao = project_user_dao
         self.column_dao = column_dao
         self.user_dao = user_dao
+        self.log_service = log_service
 
     async def create_project(self, project: ProjectCreate, owner: User) -> ProjectResponse:
         """
@@ -54,6 +57,14 @@ class ProjectService:
                 user_id=owner.id,
                 role=ProjectUserRole.owner
         )
+
+        await self.log_service.add_log(
+            project_id=db_project.id,
+            user_id=owner.id,
+            type="create",
+            info=f"project"
+        )
+
         return ProjectResponse(
             id=db_project.id,
             name=db_project.name,
@@ -98,7 +109,7 @@ class ProjectService:
                 position=idx
             )
 
-    async def invite_member(self, project_id: UUID, email: EmailStr) -> ProjectMemberResponse:
+    async def invite_member(self, project_id: UUID, email: EmailStr, current_user_id: UUID) -> ProjectMemberResponse:
         """
         Приглашает пользователя в проект по email.
 
@@ -131,6 +142,13 @@ class ProjectService:
         project_user = await self.project_user_dao.add_project_member(
             project_id=project_id,
             user_id=user.id,
+        )
+
+        await self.log_service.add_log(
+            project_id=project.id,
+            user_id=current_user_id,
+            type="member invite",
+            info=f"{user.id}"
         )
 
         return ProjectMemberResponse(
@@ -214,6 +232,14 @@ class ProjectService:
             )
         await self.project_user_dao.update_role(project_id, user_id, new_role.name)
         user = await self.user_dao.find_by_id(user_id)
+
+        await self.log_service.add_log(
+            project_id=project_id,
+            user_id=current_user_id,
+            type="member change role",
+            info=f"{user.id} to {new_role.name}"
+        )
+
         return ProjectMemberResponse(
             id=user.id,
             username=user.username,
@@ -264,12 +290,28 @@ class ProjectService:
 
         if current_project_user.role == ProjectUserRole.owner:
             await self.project_user_dao.remove_project_member(project_id, user_id)
+
+            await self.log_service.add_log(
+                project_id=project_id,
+                user_id=current_user_id,
+                type="member remove",
+                info=f"{user_id}"
+            )
+
             return True
 
         if current_project_user.role == ProjectUserRole.admin:
             if project_user.role in [ProjectUserRole.member]:
                 await self.project_user_dao.remove_project_member(project_id, user_id)
+
+                await self.log_service.add_log(
+                    project_id=project_id,
+                    user_id=current_user_id,
+                    type="member remove",
+                    info=f"{user_id}"
+                )
                 return True
+
             else:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,

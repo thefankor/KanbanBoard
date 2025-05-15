@@ -1,21 +1,18 @@
 from typing import Union
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, status
-from pydantic import EmailStr
+from fastapi import Depends, HTTPException
 
 from src.dao import ColumnDAO, TaskDAO
-from src.dao.project import ProjectDAO, ProjectUserDAO
+from src.dao.project import ProjectDAO
 from src.dao.user import UserDAO
 
 from src.models import User
-from src.models.enums import InviteProjectUserRole
-from src.models.project import ProjectUserRole, Project
 
-from src.schemas.project import ProjectCreate, ProjectResponse, ProjectMemberResponse, \
-    ProjectResponseShort
+from src.schemas.project import ProjectCreate, ProjectResponse
 from src.schemas.task import TaskCreate, TaskResponse, ProjectTaskResponse, TaskUpdate, TaskColumnUpdate
 from src.schemas.task import ColumnResponse
+from src.service.log import ProjectLogService
 
 
 class TaskService:
@@ -29,8 +26,10 @@ class TaskService:
             project_dao: ProjectDAO = Depends(),
             column_dao: ColumnDAO = Depends(),
             task_dao: TaskDAO = Depends(),
-            user_dao: UserDAO = Depends()
+            user_dao: UserDAO = Depends(),
+            log_service: ProjectLogService = Depends()
     ):
+        self.log_service = log_service
         self.project_dao = project_dao
         self.column_dao = column_dao
         self.task_dao = task_dao
@@ -49,6 +48,15 @@ class TaskService:
         """
 
         task = await self.task_dao.add(**task.model_dump(), producer_id=user.id)
+        column = await self.column_dao.find_by_id(task.column_id)
+
+        await self.log_service.add_log(
+            project_id=column.project_id,
+            task_id=task.id,
+            user_id=user.id,
+            type="task create",
+        )
+
         return TaskResponse.model_validate(task, from_attributes=True)
 
     async def get_by_project(self, project_id: UUID) -> ProjectTaskResponse:
@@ -79,7 +87,7 @@ class TaskService:
             ]
         )
 
-    async def update(self, task_id: UUID, task_update: Union[TaskUpdate, TaskColumnUpdate]) -> TaskResponse:
+    async def update(self, task_id: UUID, task_update: Union[TaskUpdate, TaskColumnUpdate], user_id: UUID) -> TaskResponse:
         """
         Обновляет существующую задачу.
 
@@ -102,10 +110,20 @@ class TaskService:
 
         update_data = task_update.model_dump(exclude_unset=True)
         updated_task = await self.task_dao.update(task_id, **update_data)
+
+        column = await self.column_dao.find_by_id(updated_task.column_id)
+
+        await self.log_service.add_log(
+            project_id=column.project_id,
+            task_id=task.id,
+            user_id=user_id,
+            type="task update",
+            info=f"{str(update_data)}"
+        )
         
         return TaskResponse.model_validate(updated_task, from_attributes=True)
 
-    async def delete(self, task_id: UUID) -> None:
+    async def delete(self, task_id: UUID, user_id: UUID) -> None:
         """
         Удаляет задачу по id.
         """

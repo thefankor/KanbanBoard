@@ -4,8 +4,8 @@ from uuid import UUID
 from src.dependencies import (
     get_project_admin_user,
     get_project_user,
-    get_project_id_by_task_id_and_check_admin,
-    can_change_task_column
+    can_change_task_column,
+    get_current_user_by_task_id_and_check_admin
 )
 from src.schemas.task import (
     TaskCreate,
@@ -45,29 +45,29 @@ async def get_tasks(
 async def update_task(
     task_id: UUID,
     task_update: TaskUpdate,
-    project_id: UUID = Depends(get_project_id_by_task_id_and_check_admin),
+    current_user: User = Depends(get_current_user_by_task_id_and_check_admin),
     task_service: TaskService = Depends(TaskService)
 ):
     """Обновить существующую задачу."""
-    return await task_service.update(task_id, task_update)
+    return await task_service.update(task_id, task_update, current_user.id)
 
 
 @router.patch("/{task_id}/column", response_model=TaskResponse)
 async def update_task_column(
     task_id: UUID,
     column_update: TaskColumnUpdate,
-    _=Depends(can_change_task_column),
+    current_user: User =Depends(can_change_task_column),
     task_service: TaskService = Depends(TaskService)
 ):
     """Переместить задачу в другую колонку (доступно админу/владельцу или исполнителю)."""
-    return await task_service.update(task_id, column_update)
+    return await task_service.update(task_id, column_update, current_user.id)
 
 
 @router.delete("/{task_id}", status_code=204)
 async def delete_task(
     task_id: UUID,
-    _=Depends(get_project_id_by_task_id_and_check_admin),
+    current_user: User =Depends(get_current_user_by_task_id_and_check_admin),
     task_service: TaskService = Depends(TaskService)
 ):
     """Удалить задачу (доступно админу или владельцу проекта)."""
-    await task_service.delete(task_id)
+    await task_service.delete(task_id, current_user.id)

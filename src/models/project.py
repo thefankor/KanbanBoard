@@ -21,7 +21,7 @@ class ProjectUser(BaseWithTimestamps):
     __tablename__ = "project_users"
 
     id: Mapped[UUID] = mapped_column(primary_key=True)
-    project_id: Mapped[UUID] = mapped_column(ForeignKey("projects.id"))
+    project_id: Mapped[UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"))
     user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id"))
     role: Mapped[ProjectUserRole] = mapped_column(Enum(ProjectUserRole))
 
@@ -32,7 +32,8 @@ class ProjectLog(BaseWithTimestamps):
     __tablename__ = "project_logs"
 
     id: Mapped[UUID] = mapped_column(primary_key=True)
-    task_id: Mapped[UUID] = mapped_column(ForeignKey("tasks.id"))
-    user_id: Mapped[Optional[UUID]] = mapped_column(ForeignKey("users.id"))
+    project_id: Mapped[Optional[UUID]] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"))
+    task_id: Mapped[Optional[UUID]] = mapped_column(ForeignKey("tasks.id", ondelete="CASCADE"))
+    user_id: Mapped[Optional[UUID]] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
     type: Mapped[str] = mapped_column(String)
     info: Mapped[Optional[str]] = mapped_column(Text)

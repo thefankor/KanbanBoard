@@ -179,13 +179,13 @@ async def get_project_owner_user(
 
     return user
 
-async def get_project_id_by_task_id_and_check_admin(
+async def get_current_user_by_task_id_and_check_admin(
     task_id: UUID,
     current_user: User = Depends(get_current_user),
     task_dao: TaskDAO = Depends(TaskDAO),
     column_dao: ColumnDAO = Depends(ColumnDAO),
     project_user_dao: ProjectUserDAO = Depends(ProjectUserDAO),
-) -> UUID:
+) -> User:
     task = await task_dao.find_by_id(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -197,7 +197,7 @@ async def get_project_id_by_task_id_and_check_admin(
     project_user = await project_user_dao.check_member(project_id, current_user.id)
     if not project_user or project_user.role not in [ProjectUserRole.admin, ProjectUserRole.owner]:
         raise HTTPException(status_code=403, detail="Not enough permissions")
-    return project_id
+    return current_user
 
 async def can_change_task_column(
     task_id: UUID,
@@ -205,7 +205,7 @@ async def can_change_task_column(
     task_dao: TaskDAO = Depends(TaskDAO),
     column_dao: ColumnDAO = Depends(ColumnDAO),
     project_user_dao: ProjectUserDAO = Depends(ProjectUserDAO),
-) -> None:
+) -> User:
     task = await task_dao.find_by_id(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -219,6 +219,7 @@ async def can_change_task_column(
     is_assignee = task.assignee_id == current_user.id
     if not (is_admin_or_owner or is_assignee):
         raise HTTPException(status_code=403, detail="Not enough permissions")
+    return current_user
 
 async def get_project_admin_by_column(
     column_id: UUID,

@@ -32,7 +32,7 @@ async def create_column(
     column_service: ColumnService = Depends(ColumnService)
 ):
     """Создать новую колонку."""
-    return await column_service.create(column, project_id)
+    return await column_service.create(column, project_id, current_user.id)
 
 
 @router.patch("/{column_id}", response_model=ColumnResponseShort)
@@ -43,7 +43,7 @@ async def update_column(
     column_service: ColumnService = Depends(ColumnService)
 ):
     """Обновить колонку."""
-    return await column_service.update(column_id, column_update)
+    return await column_service.update(column_id, column_update, current_user.id)
 
 
 @router.delete("/{column_id}", status_code=204)
@@ -53,4 +53,4 @@ async def delete_column(
     column_service: ColumnService = Depends(ColumnService)
 ):
     """Удалить колонку."""
-    await column_service.delete(column_id)
+    await column_service.delete(column_id, current_user.id)
