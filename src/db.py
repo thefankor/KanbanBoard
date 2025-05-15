@@ -9,7 +9,7 @@ DATABASE_URL = settings.DATABASE_URL
 
 engine = create_async_engine(
     DATABASE_URL,
-    echo=True
+    # echo=True
 )
 
 async_session_maker = sessionmaker(

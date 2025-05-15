@@ -11,5 +11,7 @@ class User(BaseWithTimestamps):
     __tablename__ = "users"
 
     id: Mapped[UUID] = mapped_column(primary_key=True)
-    email: Mapped[str] = mapped_column(String, unique=True, nullable=False)
-    name: Mapped[Optional[str]] = mapped_column(String, nullable=False)
+    email: Mapped[str] = mapped_column(String, unique=True)
+    username: Mapped[str] = mapped_column(String, unique=True)
+    hashed_password: Mapped[str] = mapped_column(String)
+    name: Mapped[str] = mapped_column(String)
