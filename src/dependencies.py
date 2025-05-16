@@ -186,6 +186,10 @@ async def get_current_user_by_task_id_and_check_admin(
     column_dao: ColumnDAO = Depends(ColumnDAO),
     project_user_dao: ProjectUserDAO = Depends(ProjectUserDAO),
 ) -> User:
+    """
+    Проверяет, что пользователь является админом или владельцем проекта по task_id.
+    Используется для эндпоинтов, где требуется доступ к задаче только для админа/владельца проекта.
+    """
     task = await task_dao.find_by_id(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -206,6 +210,11 @@ async def can_change_task_column(
     column_dao: ColumnDAO = Depends(ColumnDAO),
     project_user_dao: ProjectUserDAO = Depends(ProjectUserDAO),
 ) -> User:
+    """
+    Проверяет, что пользователь может менять колонку задачи:
+    - либо он админ/владелец проекта,
+    - либо он исполнитель задачи.
+    """
     task = await task_dao.find_by_id(task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -213,7 +222,7 @@ async def can_change_task_column(
     if not column:
         raise HTTPException(status_code=404, detail="Column not found")
     project_id = column.project_id
-    
+
     project_user = await project_user_dao.check_member(project_id, current_user.id)
     is_admin_or_owner = project_user and project_user.role in [ProjectUserRole.admin, ProjectUserRole.owner]
     is_assignee = task.assignee_id == current_user.id

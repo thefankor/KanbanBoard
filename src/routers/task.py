@@ -1,3 +1,5 @@
+import datetime
+
 from fastapi import APIRouter, Depends
 from uuid import UUID
 
@@ -34,11 +36,23 @@ async def create_task(
 @router.get("/{project_id}", response_model=ProjectTaskResponse)
 async def get_tasks(
     project_id: UUID,
+    assignee_id: UUID = None,
+    producer_id: UUID = None,
+    column_id: UUID = None,
+    deadline: datetime.date = None,
+    title: str = None,
     current_user: User = Depends(get_project_user),
     task_service: TaskService = Depends(TaskService)
 ):
-    """Получить проекты текущего пользователя."""
-    return await task_service.get_by_project(project_id)
+    """Получить задачи проекта с фильтрами по исполнителю, постановщику, колонке, дедлайну и title."""
+    return await task_service.get_by_project(
+        project_id=project_id,
+        assignee_id=assignee_id,
+        producer_id=producer_id,
+        column_id=column_id,
+        deadline=deadline,
+        title=title
+    )
 
 
 @router.patch("/{task_id}", response_model=TaskResponse)

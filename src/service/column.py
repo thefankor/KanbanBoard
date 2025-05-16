@@ -2,7 +2,7 @@ from uuid import UUID
 
 from fastapi import Depends, HTTPException
 
-from src.dao import ColumnDAO
+from src.dao import ColumnDAO, TaskDAO
 from src.schemas.column import ColumnCreate, ColumnUpdate, ColumnResponseShort
 from src.service.log import ProjectLogService
 
@@ -11,10 +11,12 @@ class ColumnService:
     def __init__(
             self,
             column_dao: ColumnDAO = Depends(),
+            task_dao: TaskDAO = Depends(TaskDAO),
             log_service: ProjectLogService = Depends()
     ):
         self.log_service: ProjectLogService = log_service
         self.column_dao = column_dao
+        self.task_dao: TaskDAO = task_dao
 
     async def create(self, column: ColumnCreate, project_id: UUID, user_id: UUID) -> ColumnResponseShort:
         db_column = await self.column_dao.add(**column.model_dump(), project_id=project_id)
@@ -57,11 +59,14 @@ class ColumnService:
         if not db_column:
             raise HTTPException(status_code=404, detail="Column not found")
 
+        tasks = await self.task_dao.find_all(column_id=db_column.id)
+        if tasks:
+            raise HTTPException(status_code=400, detail="You can't delete a column with tasks in it.")
+        await self.column_dao.delete(column_id)
+
         await self.log_service.add_log(
             project_id=db_column.project_id,
             user_id=user_id,
             type="column removed",
             info=f"{db_column.id}"
         )
-
-        await self.column_dao.delete(column_id)

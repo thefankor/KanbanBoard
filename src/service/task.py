@@ -1,5 +1,6 @@
 from typing import Union
 from uuid import UUID
+from datetime import date
 
 from fastapi import Depends, HTTPException
 
@@ -59,22 +60,38 @@ class TaskService:
 
         return TaskResponse.model_validate(task, from_attributes=True)
 
-    async def get_by_project(self, project_id: UUID) -> ProjectTaskResponse:
+    async def get_by_project(
+        self,
+        project_id: UUID,
+        assignee_id: UUID = None,
+        producer_id: UUID = None,
+        column_id: UUID = None,
+        deadline: date = None,
+        title: str = None
+    ) -> ProjectTaskResponse:
         """
-        Возвращает список всех задач в проекте, сгруппированных по колонкам.
-
-        Args:
-            project_id (UUID): Идентификатор проекта.
-
-        Returns:
-            ProjectTaskResponse: Информация о проекте с колонками и задачами.
+        Возвращает список всех задач в проекте, сгруппированных по колонкам с фильтрами.
         """
         project = await self.project_dao.find_by_id(project_id)
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
 
+        filtered_tasks = await self.task_dao.find_filtered(
+            project_id=project_id,
+            assignee_id=assignee_id,
+            producer_id=producer_id,
+            column_id=column_id,
+            deadline=deadline,
+            title=title
+        )
+
         columns = await self.project_dao.get_project_columns_with_tasks(project_id)
-        
+        column_map = {col.id: col for col in columns}
+        for col in columns:
+            col.tasks = []
+        for task in filtered_tasks:
+            if task.column_id in column_map:
+                column_map[task.column_id].tasks.append(task)
         return ProjectTaskResponse(
             project_id=project_id,
             columns=[
@@ -82,7 +99,7 @@ class TaskService:
                     id=column.id,
                     name=column.name,
                     position=column.position,
-                    tasks=[TaskResponse.model_validate(task, from_attributes=True) for task in column.tasks]
+                    tasks=[TaskResponse.model_validate(task, from_attributes=True) for task in column_map[column.id].tasks]
                 ) for column in columns
             ]
         )
