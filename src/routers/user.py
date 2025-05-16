@@ -6,7 +6,7 @@ from src.schemas.user import UserSchema
 router = APIRouter(tags=["User"])
 
 
-@router.get("/profile", summary="Get current user profile")
+@router.get("/profile", summary="Get current user profile", response_model=UserSchema)
 async def get_profile(
     user: User = Depends(get_current_user),
 ):
