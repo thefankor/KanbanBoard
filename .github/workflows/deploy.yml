@@ -16,13 +16,13 @@ jobs:
         run: echo "${{ secrets.MAIN_ENV }}" > .env
 
       - name: Build images
-        run: docker-compose -f docker-compose.yml -p kanban_main build
+        run: docker compose -f docker-compose.yml -p kanban_main build
         id: build_step
 
       - name: Stop previous services
-        run: docker-compose -f docker-compose.yml -p kanban_main down --remove-orphans
+        run: docker compose -f docker-compose.yml -p kanban_main down --remove-orphans
         if: success()
 
       - name: Run services
-        run: docker-compose -f docker-compose.yml -p kanban_main up -d --build --remove-orphans
+        run: docker compose -f docker-compose.yml -p kanban_main up -d --build --remove-orphans
         if: success()
